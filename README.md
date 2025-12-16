@@ -1,145 +1,118 @@
-# Web Interview Recorder (Local, Client–Server)
+# Offline Interview Recorder with Whisper AI
 
-A small web app to record interview answers one question at a time (up to 5), upload each answer immediately, and only allow moving to the next question after a successful upload. Architecture: Frontend (React + Vite) ↔ Backend (Express), with server-side token verification.
+A local client–server web application that records interview answers and automatically converts recorded videos into text and AI-generated feedback using Whisper.
 
-1) Goals & Scope
+---
 
-Record sequentially Q1 → Q5 (you can stop earlier), one file per question.
+## Overview
 
-Stop ⇒ Upload immediately; Next is enabled only after upload succeeds.
+This project allows users to record interview answers one question at a time (up to 5 questions).  
+Each recorded answer is uploaded immediately to the backend, where it is processed by an offline AI pipeline to generate a transcript and a short summary or feedback.
 
-API flow: verify-token → session/start → upload-one (repeat per question) → session/finish.
+The system is designed for **local execution**, making it suitable for coursework, demonstrations, and privacy-sensitive use cases.
 
-Server persists a session folder (timestamp + username) plus a meta.json.
+---
 
-Extras implemented: 3-second pre-countdown, per-question time limit (default 60s), upload retry with backoff, and Start button gating (enabled only after Verify Token + Start Session + Enable Camera).
+## Key Features
 
-2) How it works (user flow)
+- Record interview answers sequentially (Q1 → Q5)
+- One video file per question
+- Upload is required before moving to the next question
+- Automatic stop after a time limit (default: 60 seconds)
+- Offline speech-to-text using Whisper
+- AI-generated transcript and feedback for each answer
+- Results are stored and displayed per question
+- Client-server architecture with clear separation of concerns
 
-Enter token and click Verify.
+---
 
-Enter Name and click Start Session ⇒ the server creates a session folder and returns its name.
+## AI Processing Workflow
 
-Enable camera/mic, click Start ⇒ 3…2…1 ⇒ record (up to 60s) ⇒ Stop (auto when time is up).
+1. The frontend records video and audio using the browser MediaRecorder API.
+2. The recorded video is uploaded to the backend server.
+3. FFmpeg extracts and converts audio from video into WAV format.
+4. Whisper runs locally to transcribe speech into text.
+5. A lightweight AI summarization step generates feedback.
+6. The transcript and summary are returned to the frontend and saved per question.
 
-Click Upload for the current question. When the server confirms, Next becomes available.
+---
 
-When finished, click Finish to write finishedAt and questionsCount to meta.json.
+## Technology Stack
 
-3) Project structure
-web-interview-recorder/
-├─ backend/
-│  ├─ index.js
-│  ├─ .env
-│  └─ storage/                 # server output: Q*.webm + meta.json
-└─ frontend/
-   ├─ src/App.jsx              # UI + FE logic
-   ├─ vite.config.js           # proxy /api → http://localhost:4000
-   └─ ...
+### Frontend
+- React
+- Vite
+- JavaScript
+- MediaRecorder API
 
-4) Setup & Run
-Backend
+### Backend
+- Node.js
+- Express
+- FFmpeg
+- Whisper (local, offline)
+- Python (AI processing scripts)
+
+---
+
+## Project Structure
+
+Offline_interview_recorder_whisper/
+├── backend/
+│ ├── index.js
+│ ├── run_whisper_local.js
+│ ├── whisper_local.py
+│ ├── ai_summary.py
+│ └── storage/
+├── frontend/
+│ ├── src/
+│ │ ├── App.jsx
+│ │ └── App.css
+│ └── vite.config.js
+└── README.md
+
+
+---
+
+## How to Run Locally
+
+### Backend Setup
+
+'''bash
 cd backend
-npm i
-# .env (example)
-cat > .env << 'EOF'
-TOKEN_LIST=demo123,abc456
-STORAGE_PATH=storage
-MAX_SIZE_MB=50
-PORT=4000
-EOF
-
+npm install
 npm run dev
-# console: "Backend http://localhost:4000"
+Backend server runs at:
+http://localhost:4000
 
-Frontend
-cd ../frontend
-npm i
+Frontend Setup
+bash
+cd frontend
+npm install
 npm run dev
-# open http://localhost:5173
+Open in browser:
+http://localhost:5173
+
+API Flow (Simplified)
+1. Verify token
+2. Start session
+3. Upload recorded video (per question)
+4. AI processing (Whisper + summarization)
+5. Finish session
+
+## Security and Constraints
+- Token verification is handled on the server
+- Upload order is enforced (cannot skip questions)
+- File size and MIME type are validated
+- Designed for local or internal use (not public deployment)
+
+## Use Case and Purpose
+This project demonstrates:
+- Client-server communication
+- Media recording in web browsers
+- Offline AI integration
+- Practical usage of FFmpeg and Whisper
+- Full-stack development with React and Node.js
+It is suitable for academic projects and personal portfolio presentations.
 
 
-Note: if your browser/proxy blocks the relative /api calls and Verify shows a JSON parse error, temporarily switch FE fetch URLs to absolute http://127.0.0.1:4000/... and it will work.
 
-5) API (concise)
-
-GET /api/health → service check.
-
-POST /api/verify-token
-Body: { token } → 200 { ok:true } or 401 for invalid token.
-
-POST /api/session/start
-Body: { token, userName } → 200 { ok:true, folder }.
-
-POST /api/upload-one (multipart/form-data)
-Fields:
-token (string), folder (string), questionIndex ("1"… "5"),
-video (file, mimetype video/webm, recommended filename Q{index}.webm).
-200 { ok:true, savedAs:"Q{index}.webm" }
-409 if out-of-order (sending Qk while Q1…Q(k−1) are missing)
-415/413 for wrong MIME / oversized file.
-
-POST /api/session/finish
-Body: { token, folder, questionsCount } → 200 { ok:true }.
-
-6) Storage convention (server)
-
-Session folder: storage/DD_MM_YYYY_HH_mm_user_name/ (timezone Asia/Bangkok).
-
-Video files: Q1.webm … Q5.webm.
-
-Minimal meta.json:
-
-{
-  "userName": "user_name",
-  "timeZone": "Asia/Bangkok",
-  "uploaded": [
-    { "q": 1, "file": "Q1.webm", "uploadedAt": "ISO-8601" }
-  ],
-  "startedAt": "ISO-8601",
-  "finishedAt": "ISO-8601|null",
-  "questionsCount": 1
-}
-
-
-You can review uploaded files at:
-http://localhost:4000/uploads/<folder>/Q1.webm
-
-7) Limits & Security
-
-Accepted MIME: video/webm; max size via MAX_SIZE_MB (defaults to 50MB).
-
-Order is enforced in the backend (you cannot skip questions).
-
-Token is verified on the server. This is basic API-key style auth, which is sufficient for local coursework.
-
-If deployed publicly, use HTTPS to get camera/mic permissions reliably in browsers.
-
-8) Quick tests (optional)
-
-Health:
-
-curl -i http://127.0.0.1:4000/api/health
-
-
-Out-of-order guard:
-
-echo "dummy" > dummy.webm
-# send Q2 before Q1 (expect 409)
-curl -i -X POST http://127.0.0.1:4000/api/upload-one \
-  -F "token=demo123" \
-  -F "folder=<FOLDER_FROM_START_SESSION>" \
-  -F "questionIndex=2" \
-  -F "video=@dummy.webm;type=video/webm"
-
-9) Demo script (≤ 3 minutes)
-
-Verify Token → Start Session (show returned Folder).
-
-Enable camera → Start (3-second countdown) → Stop (auto at 60s) → Upload → Next.
-
-Repeat for 1–2 questions.
-
-Open uploads/<folder>/ to show Q*.webm and meta.json.
-
-Finish.
