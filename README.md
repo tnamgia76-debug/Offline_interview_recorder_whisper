@@ -78,18 +78,18 @@ Offline_interview_recorder_whisper/
 ### Backend Setup
 
 '''bash
-cd backend
-npm install
-npm run dev
+- cd backend
+- npm install
+- npm run dev
 Backend server runs at:
 http://localhost:4000
 
 Frontend Setup
-bash
-cd frontend
-npm install
-npm run dev
-Open in browser:
+- bash
+- cd frontend
+- npm install
+- npm run dev
+- Open in browser:
 http://localhost:5173
 
 API Flow (Simplified)
