@@ -76,21 +76,16 @@ Offline_interview_recorder_whisper/
 ## How to Run Locally
 
 ### Backend Setup
-
-'''bash
-- cd backend
-- npm install
-- npm run dev
-Backend server runs at:
-http://localhost:4000
+1. cd backend
+2. npm install
+3. npm run dev
+4. Backend server runs at: http://localhost:4000
 
 Frontend Setup
-- bash
-- cd frontend
-- npm install
-- npm run dev
-- Open in browser:
-http://localhost:5173
+1. cd frontend
+2. npm install
+3. npm run dev
+4. Open in browser: http://localhost:5173
 
 API Flow (Simplified)
 1. Verify token
